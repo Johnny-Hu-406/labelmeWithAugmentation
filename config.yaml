@@ -1,0 +1,17 @@
+SplitData : True
+PerformAug : True
+Trans2coco: True
+
+Input_folders:
+  input_folder: "input_data"
+
+Output_CoCo_folders:
+  labelme_data:
+    train_folder: "labelme_data/train"
+    val_folder: "labelme_data/val"
+  coco:
+    coco_train: "coco/train2017"
+    coco_val: "coco/val2017"
+    coco_annotations: "coco/annotations"
+
+Fixed_categories : ['pluckable', 'unpluckable', 'middle', 'other']

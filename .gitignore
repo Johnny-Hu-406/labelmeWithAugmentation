@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+aug_data
+coco
+labelme_data
+input_data
