@@ -262,8 +262,16 @@ def main():
         pass
     
     # Step 3: Convert to COCO format if enabled
-    if convert_to_coco:
+    if perform_aug and split_data and  convert_to_coco:
         custom_labelme2coco(config, coco_train, coco_annotations, 'train')
+        custom_labelme2coco(config, coco_val, coco_annotations, 'val')
+    elif convert_to_coco:
+        input_folder = 'input_data/FongSiang'
+        val_files = os.listdir(input_folder)  
+        for img_file in val_files:
+            # json_file = os.path.splitext(img_file)[0] + '.json'
+            shutil.copy2(os.path.join(input_folder, img_file), os.path.join(coco_val, img_file))
+            # shutil.copy2(os.path.join(input_folder, json_file), os.path.join(val_folder, json_file))
         custom_labelme2coco(config, coco_val, coco_annotations, 'val')
     
     print("All Processing complete!")
