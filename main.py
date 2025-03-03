@@ -22,34 +22,58 @@ def create_directories(config):
     if config["SplitData"]:
         os.makedirs(config["Output_CoCo_folders"]["labelme_data"]["train_folder"], exist_ok=True)
         os.makedirs(config["Output_CoCo_folders"]["labelme_data"]["val_folder"], exist_ok=True)
+        os.makedirs(config["Output_CoCo_folders"]["labelme_data"]["test_folder"], exist_ok=True)
     
     if config["Trans2coco"]:
         os.makedirs(config["Output_CoCo_folders"]["coco"]["coco_train"], exist_ok=True)
         os.makedirs(config["Output_CoCo_folders"]["coco"]["coco_val"], exist_ok=True)
+        os.makedirs(config["Output_CoCo_folders"]["coco"]["coco_test"], exist_ok=True)
         os.makedirs(config["Output_CoCo_folders"]["coco"]["coco_annotations"], exist_ok=True)
 
-def split_dataset(input_folder, train_folder, val_folder, train_ratio=0.8):
-    """Split the dataset into train and validation sets"""
-    # Get all image files
-    image_files = sorted([f for f in os.listdir(input_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+def split_dataset(input_folder, train_folder, val_folder, test_folder, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42):
+    # random.seed(seed)
     
-    # Calculate split point
-    split_idx = int(len(image_files) * train_ratio)
-    train_files = image_files[:split_idx]
-    val_files = image_files[split_idx:]
+    total_train_files, total_val_files, total_test_files = 0, 0, 0
+    for category in os.listdir(input_folder):
+        category_path = os.path.join(input_folder, category)
+        if os.path.isdir(category_path):
+            
+            # Get all image files in this category
+            image_files = sorted([f for f in os.listdir(category_path) 
+                                  if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+            
+            # Calculate split points
+            total_files = len(image_files)
+            train_split = int(total_files * train_ratio)
+            val_split = train_split + int(total_files * val_ratio)
+            
+            # Split files
+            train_files = image_files[:train_split]
+            val_files = image_files[train_split:val_split]
+            test_files = image_files[val_split:]
+            
+            # Copy files to respective folders
+            for split_files, output_folder in [
+                (train_files, train_folder), 
+                (val_files, val_folder), 
+                (test_files, test_folder)
+            ]:
+                for img_file in split_files:
+                    json_file = os.path.splitext(img_file)[0] + '.json'
+                    shutil.copy2(
+                        os.path.join(category_path, img_file), 
+                        os.path.join(output_folder, img_file)
+                    )
+                    shutil.copy2(
+                        os.path.join(category_path, json_file), 
+                        os.path.join(output_folder, json_file)
+                    )
+
+            total_train_files += len(train_files)
+            total_val_files += len(val_files)
+            total_test_files += len(test_files)
     
-    # Copy files to respective folders
-    for img_file in train_files:
-        json_file = os.path.splitext(img_file)[0] + '.json'
-        shutil.copy2(os.path.join(input_folder, img_file), os.path.join(train_folder, img_file))
-        shutil.copy2(os.path.join(input_folder, json_file), os.path.join(train_folder, json_file))
-    
-    for img_file in val_files:
-        json_file = os.path.splitext(img_file)[0] + '.json'
-        shutil.copy2(os.path.join(input_folder, img_file), os.path.join(val_folder, img_file))
-        shutil.copy2(os.path.join(input_folder, json_file), os.path.join(val_folder, json_file))
-    
-    return len(train_files), len(val_files)
+    return total_train_files, total_val_files, total_test_files
 
 # Your existing helper classes and functions (keep them as is)
 class NumpyEncoder(json.JSONEncoder):
@@ -230,49 +254,43 @@ def main():
     source_folder = input_folder
     train_folder = output_folders["labelme_data"]["train_folder"]
     val_folder = output_folders["labelme_data"]["val_folder"]
+    test_folder = output_folders["labelme_data"]["test_folder"]
     coco_train = output_folders["coco"]["coco_train"]
     coco_val = output_folders["coco"]["coco_val"]
+    coco_test = output_folders["coco"]["coco_test"]
     coco_annotations = output_folders["coco"]["coco_annotations"]
     
     # Step 1: Split dataset if enabled
     if split_data:
-        # print("Splitting dataset into train and validation sets...")
-        train_count, val_count = split_dataset(input_folder, train_folder, val_folder)
-        # print(f"Split complete: {train_count} training samples, {val_count} validation samples")
-        # Update source folders for augmentation
-        source_train = train_folder
-        source_val = val_folder
+        total_train_files, total_val_files, total_test_files = split_dataset(input_folder, train_folder, val_folder, test_folder)
+        print(f"Split complete: {total_train_files} training samples, {total_val_files} validation samples, {total_test_files} testing samples")
         print("Split data complete!")
     else:
-        # print("Skipping dataset split (SplitData is False)")
-        # If not splitting, use input folder directly
-        source_train = source_val = input_folder
+        pass
     
     # Step 2: Perform augmentation if enabled
     if perform_aug:
-        # print("Starting data augmentation...")
         if split_data:
-            # print("Augmenting training set...")
-            augment_dataset(source_train, coco_train)
-            # print("Augmenting validation set...")
-            # augment_dataset(source_val, coco_val)
-            shutil.copytree(source_val, coco_val, dirs_exist_ok = True)
+            augment_dataset(train_folder, coco_train)
+            shutil.copytree(val_folder, coco_val, dirs_exist_ok = True)
+            shutil.copytree(test_folder, coco_test, dirs_exist_ok = True)
     else:
         print("Skipping data augmentation (PerformAug is False)")
-        pass
     
     # Step 3: Convert to COCO format if enabled
-    if perform_aug and split_data and  convert_to_coco:
+    if perform_aug and split_data and convert_to_coco:
         custom_labelme2coco(config, coco_train, coco_annotations, 'train')
         custom_labelme2coco(config, coco_val, coco_annotations, 'val')
+        custom_labelme2coco(config, coco_test, coco_annotations, 'test')
     elif convert_to_coco:
-        input_folder = 'input_data/FongSiang'
-        val_files = os.listdir(input_folder)  
-        for img_file in val_files:
-            # json_file = os.path.splitext(img_file)[0] + '.json'
-            shutil.copy2(os.path.join(input_folder, img_file), os.path.join(coco_val, img_file))
-            # shutil.copy2(os.path.join(input_folder, json_file), os.path.join(val_folder, json_file))
-        custom_labelme2coco(config, coco_val, coco_annotations, 'val')
+        """TODO"""
+        # input_folder = 'input_data/FongSiang'
+        # val_files = os.listdir(input_folder)  
+        # for img_file in val_files:
+        #     # json_file = os.path.splitext(img_file)[0] + '.json'
+        #     shutil.copy2(os.path.join(input_folder, img_file), os.path.join(coco_val, img_file))
+        #     # shutil.copy2(os.path.join(input_folder, json_file), os.path.join(val_folder, json_file))
+        # custom_labelme2coco(config, coco_val, coco_annotations, 'val')
     
     print("All Processing complete!")
 

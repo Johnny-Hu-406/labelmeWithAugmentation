@@ -16,11 +16,11 @@
 
 ## 執行結果
 - Original img  
-<img src="images/original_Image.jpg" alt="Original Image" width="400"/>
+<img src="docs_images/original_Image.jpg" alt="Original Image" width="400"/>
 
 - Image after data augmentation  
-<img src="images/example_1.jpg" alt="Example 1" width="400"/>  
-<img src="images/example_2.jpg" alt="Example 2" width="400"/>
+<img src="docs_images/example_1.jpg" alt="Example 1" width="400"/>  
+<img src="docs_images/example_2.jpg" alt="Example 2" width="400"/>
 
 ## 系統需求(TODO ....)
 
@@ -42,7 +42,7 @@ pip install albumentations opencv-python numpy matplotlib tqdm labelme2coco
 
 ## 使用方法
 
-1. **準備輸入資料夾：** 建立一個名為 `input_data` 的文件夾，並將你的圖片和相應的 JSON 標註文件放入該文件夾。每張圖片必須有一個相同名稱的 `.json` 標註文件（例如：`image.jpg` 和 `image.json`）。
+1. **準備輸入資料夾：** 建立一個名為 `input_data` 的文件夾，在此資料夾底下建立每個分類的子資料夾，並將你的圖片和相應的 JSON 標註文件放入子資料夾。每張圖片必須有一個相同名稱的 `.json` 標註文件（例如：`image.jpg` 和 `image.json`）。
 
 2. **輸出文件夾：** 增強後的圖片和更新的 JSON 文件將會保存到 `labelme_data` 文件夾中。
 
@@ -56,28 +56,31 @@ pip install albumentations opencv-python numpy matplotlib tqdm labelme2coco
 4. **執行程式：**
    
    ```bash
-   python data_augmentation.py
+   python main.py
    ```
 
-   腳本將處理 `input_data` 文件夾中的所有圖片，對圖片進行增強，並調整相應的 JSON 文件。結果會保存到 `labelme_data` 、`coco`文件夾中。
+   程式將處理 `input_data` 文件夾中所有子資料夾的圖片，對圖片進行增強，並調整相應的 JSON 文件。結果會保存到 `labelme_data` 、`coco`文件夾中。
 
-## 文件結構範例
+## 輸入資料夾結構範例
 
 ```
 input_data/
-│
-├── image1.jpg
-├── image1.json
-├── image2.jpg
-├── image2.json
-
-labelme_data/
+│──class_1_folder
+    ├── image1.jpg
+    ├── image1.json
+    ├── image2.jpg
+    ├── image2.json
+│──class_2_folder
+    ├── image1.jpg
+    ├── image1.json
+    ├── image2.jpg
+    ├── image2.json
+input_data/
 ```
-
 
 ## 自定義資料增強
 
-通過修改程式中的 Albumentations `Compose()` 部分來調整增強方式：
+通過修改程式中的 Albumentations `Compose()` ，調整資料增強的方式：
 
 ```python
 transform = A.Compose([
